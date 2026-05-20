@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Archaeological Horse Gait Mutation — Timeline Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --bg: #f5f0e8;
+    --panel: #ede7d9;
+    --panel2: #e4ddd0;
+    --border: #c8b99a;
+    --gold: #766e5d;
+    --gold-dim: #b6b3aa;
+    --text: #2c2416;
+    --text-dim: #5e5b56;
+    --red: #c0392b;
+    --blue: #1a5c8a;
+    --purple: #6c3483;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Crimson Pro', Georgia, serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-shrink: 0;
+  }
+
+  header h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    color: var(--gold);
+    text-transform: uppercase;
+  }
+
+  header p {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  .legend-pills {
+    display: flex;
+    gap: 14px;
+    margin-left: auto;
+    align-items: center;
+  }
+
+  .pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.05em;
+  }
+
+  .pill-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+
+  #map { flex: 1; z-index: 1; }
+
+  #timeline-panel {
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    padding: 12px 24px 14px;
+    flex-shrink: 0;
+  }
+
+  .tl-top {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 10px;
+  }
+
+  #year-display {
+    font-family: 'Cinzel', serif;
+    font-size: 22px;
+    font-weight: 900;
+    color: var(--gold);
+    letter-spacing: 0.05em;
+    min-width: 140px;
+  }
+
+  #period-display {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-style: italic;
+    flex: 1;
+  }
+
+  #count-display {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: var(--gold-dim);
+    letter-spacing: 0.1em;
+  }
+
+  .btn-group {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+  }
+
+  button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-radius: 1px;
+  }
+
+  button:hover, button.active {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: rgba(138,106,31,0.07);
+  }
+
+  .slider-wrap { position: relative; padding-bottom: 18px; }
+
+  #tl-slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+  }
+
+  #tl-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 15px; height: 15px;
+    border-radius: 50%;
+    background: var(--gold);
+    border: 2px solid var(--panel);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+    cursor: grab;
+  }
+
+  #tl-slider::-webkit-slider-thumb:active { cursor: grabbing; }
+
+  .ticks {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+  }
+
+  .tick {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.02em;
+  }
+
+  /* Popup */
+  .leaflet-popup-content-wrapper {
+    background: #faf7f0 !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 2px !important;
+    box-shadow: 0 3px 16px rgba(0,0,0,0.15) !important;
+    color: var(--text) !important;
+    font-family: 'Crimson Pro', serif !important;
+  }
+
+  .leaflet-popup-tip { background: #faf7f0 !important; }
+
+  .popup-site {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    color: var(--gold);
+    letter-spacing: 0.05em;
+    margin-bottom: 3px;
+  }
+
+  .popup-year {
+    font-size: 15px;
+    color: var(--text);
+    font-weight: 300;
+    margin-bottom: 5px;
+  }
+
+  .popup-meta {
+    font-size: 12.5px;
+    color: var(--text-dim);
+    line-height: 1.65;
+  }
+
+  #mode-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.06em;
+  }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Horse Gait Mutation · Archaeological Record</h1>
+    <p>DMRT3 allele distribution across Eurasia — 5354 BC to 1000 AD</p>
+  </div>
+  <div class="legend-pills">
+    <div class="pill"><div class="pill-dot" style="background:#2471a3"></div>NO VARIANT PRESENT (C/C)</div>
+    <div class="pill"><div class="pill-dot" style="background:#c0392b"></div>VARIANT HOMOZYGOUS (A/A)</div>
+    <div class="pill"><div class="pill-dot" style="background:#7d3c98"></div>VARIANT HETEROZYGOUS (C/A)</div>
+  </div>
+</header>
+
+<div id="map"></div>
+<div class="map-tooltip" id="map-tooltip"></div>
+
+<div id="timeline-panel">
+  <div class="tl-top">
+    <div id="year-display">1000 AD</div>
+    <div class="btn-group">
+      <span id="mode-label">Mode:</span>
+      <button id="btn-cumulative" class="active" onclick="setMode('cumulative')">Cumulative</button>
+      <button id="btn-window" onclick="setMode('window')">±500 yr window</button>
+      <button id="btn-play" onclick="togglePlay()">▶ Play</button>
+      <button onclick="resetSlider()">↺ Reset</button>
+    </div>
+  </div>
+  <div class="slider-wrap">
+    <input type="range" id="tl-slider" min="-5354" max="1000" value="1000" step="10">
+    <div class="ticks">
+      <div class="tick">5354 BC</div>
+      <div class="tick">4000 BC</div>
+      <div class="tick">3000 BC</div>
+      <div class="tick">2000 BC</div>
+      <div class="tick">1000 BC</div>
+      <div class="tick">500 BC</div>
+      <div class="tick">1 AD</div>
+      <div class="tick">500 AD</div>
+      <div class="tick">1000 AD</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DATA = [{"lat": 52.23, "lon": 17.8, "year": -5354, "label": "5354 BC", "site": "\u017begotki 5", "country": "Poland", "sample": "Zeg2", "period": "Pre_Iron", "color": "BLUE", "dmrt3": "C/C", "age": "5354", "wild_domestic": "W"}, {"lat": 43.98, "lon": 26.56, "year": -4300, "label": "4300 BC", "site": "Pietrele", "country": "Romania", "sample": "Pie05", "period": "Pre_Iron", "color": "BLUE", "dmrt3": "C/C", "age": "4300 BC", "wild_domestic": "W"}, {"lat": 43.98, "lon": 26.56, "year": -4300, "label": "4300 BC", "site": "Pietrele", "country": "Romania", "sample": "Pie06", "period": "Pre_Iron", "color": "BLUE", "dmrt3": "C/C", "age": "4300 BC", "wild_domestic": "W"}, {"lat": 46.45, "lon": 30.75, "year": -3600, "label": "3600 BC", "site": "Mayaki", "country": "Ukraine", "sample": "May1", "period": "Pre_Iron", "color": "BLUE", "dmrt3": "C/C", "age": "3600-3100 BC", "wild_domestic": "W"}, {"lat": 51.77, "lon": 11.18, "year": -3100, "label": "3100 BC", "site": "Westerhausen, HK", "country": "Germany", "sample": "Wes1", "period": "Pre_Iron", "color": "BLUE", "dmrt3": "C/C", "age": "3100-2700 BC", "wild_domestic": "D"}, {"lat": 51.77, "lon": 11.18, "year": -3100, "label": "3100 BC", "site": "Westerhausen, HK", "country": "Germany", "sample": "Wes2", "period": "Pre_Iron", "color": "BLUE", "dmrt3": "C/C", "age": "3100-2700 BC", "wild_domestic": "D"}, {"lat": 55.9, "lon": 76.6, "year": -1600, "label": "1600 BC", "site": "Tartas1", "country": "Siberia", "sample": "Tar01", "period": "Pre_Iron", "color": "BLUE", "dmrt3": "C/C", "age": "1600-1200 BC", "wild_domestic": "D"}, {"lat": 55.9, "lon": 76.6, "year": -1600, "label": "1600 BC", "site": "Tartas1", "country": "Siberia", "sample": "Tar05", "period": "Pre_Iron", "color": "BLUE", "dmrt3": "C/C", "age": "1600-1200 BC", "wild_domestic": "D"}, {"lat": 55.9, "lon": 76.6, "year": -1600, "label": "1600 BC", "site": "Tartas1", "country": "Siberia", "sample": "Tar07", "period": "Pre_Iron", "color": "BLUE", "dmrt3": "C/C", "age": "1600-1200 BC", "wild_domestic": "D"}, {"lat": 51.12, "lon": 11.1, "year": -2200, "label": "2200 BC", "site": "Schlo\u00dfvippach (Fpl.", "country": "Germany", "sample": "Svi6", "period": "Pre_Iron", "color": "BLUE", "dmrt3": "C/C", "age": "2200-1600 BC", "wild_domestic": "D"}, {"lat": 40.8, "lon": 44.49, "year": -1950, "label": "1950 BC", "site": "Lori-Berd", "country": "Georgia", "sample": "Lor1", "period": "Pre_Iron", "color": "BLUE", "dmrt3": "C/C", "age": "", "wild_domestic": "D"}, {"lat": 46.98, "lon": 18.93, "year": -1600, "label": "1600 BC", "site": "Duna\u00fajv\u00e1ros-Koszider", "country": "Hungary", "sample": "DuK2", "period": "Pre_Iron", "color": "BLUE", "dmrt3": "C/C", "age": "1600-1300 BC", "wild_domestic": "D"}, {"lat": 47.99, "lon": 21.08, "year": -2200, "label": "2200 BC", "site": "Tiszal\u00fac-Dankadomb", "country": "Hungary", "sample": "TiD2", "period": "Pre_Iron", "color": "BLUE", "dmrt3": "C/C", "age": "2200-1600 BC", "wild_domestic": "D"}, {"lat": 47.1, "lon": 28.6, "year": -1500, "label": "1500 BC", "site": "Miciurin", "country": "Moldova", "sample": "Mic1", "period": "Pre_Iron", "color": "BLUE", "dmrt3": "C/C", "age": "1500-1000 BC", "wild_domestic": "D"}, {"lat": 47.1, "lon": 28.6, "year": -1500, "label": "1500 BC", "site": "Miciurin", "country": "Moldova", "sample": "Mic2", "period": "Pre_Iron", "color": "BLUE", "dmrt3": "C/C", "age": "1500-1000 BC", "wild_domestic": "D"}, {"lat": 52.12, "lon": 16.98, "year": -2200, "label": "2200 BC", "site": "Bruszczewo Fpl. 5", "country": "Poland", "sample": "Bru4", "period": "Pre_Iron", "color": "BLUE", "dmrt3": "C/C", "age": "2200-1600 BC", "wild_domestic": "D"}, {"lat": 45.9, "lon": 27.8, "year": -1500, "label": "1500 BC", "site": "Garbovat", "country": "Romania", "sample": "Gar3", "period": "Pre_Iron", "color": "BLUE", "dmrt3": "C/C", "age": "1500-1000 BC", "wild_domestic": "D"}, {"lat": 48.24, "lon": 18.31, "year": -2200, "label": "2200 BC", "site": "Vrable", "country": "Slovakia", "sample": "Vra2", "period": "Pre_Iron", "color": "BLUE", "dmrt3": "C/C", "age": "2200-1600 BC", "wild_domestic": "D"}, {"lat": 39.1, "lon": -9.21, "year": -2600, "label": "2600 BC", "site": "Zambujal", "country": "Portugal", "sample": "Zam09", "period": "Pre_Iron", "color": "BLUE", "dmrt3": "C/C", "age": "2600-2200 BC", "wild_domestic": "D"}, {"lat": 37.9, "lon": -3.7, "year": -2861, "label": "2861 BC", "site": "Camino de las", "country": "Spain", "sample": "CdY2", "period": "Pre_Iron", "color": "BLUE", "dmrt3": "C/C", "age": "", "wild_domestic": "D"}, {"lat": 38.8, "lon": -1.9, "year": -2200, "label": "2200 BC", "site": "El Acequion", "country": "Spain", "sample": "Sp-39", "period": "Pre_Iron", "color": "BLUE", "dmrt3": "C/C", "age": "2200-800 BC", "wild_domestic": "D"}, {"lat": 39.86, "lon": 116.28, "year": 905, "label": "905 AD", "site": "Fengtai", "country": "China", "sample": "Fen1", "period": "Iron Age", "color": "BLUE", "dmrt3": "C/C", "age": "", "wild_domestic": "D"}, {"lat": 39.86, "lon": 116.28, "year": -1000, "label": "1000 BC", "site": "Fengtai", "country": "China", "sample": "Fen4", "period": "Iron Age", "color": "BLUE", "dmrt3": "C/C", "age": "1000-800 BC", "wild_domestic": "D"}, {"lat": 49.5, "lon": 101.0, "year": -400, "label": "400 BC", "site": "Olon-Kurin-Gol 10", "country": "Mongolia", "sample": "OKG1", "period": "Iron Age", "color": "BLUE", "dmrt3": "C/C", "age": "400-300 BC", "wild_domestic": "D"}, {"lat": 49.5, "lon": 101.0, "year": -400, "label": "400 BC", "site": "Olon-Kurin-Gol 10", "country": "Mongolia", "sample": "OKG2", "period": "Iron Age", "color": "BLUE", "dmrt3": "C/C", "age": "400-300 BC", "wild_domestic": "D"}, {"lat": 52.0, "lon": 93.8, "year": -800, "label": "800 BC", "site": "Arzan1", "country": "Siberia", "sample": "Arz1-2", "period": "Iron Age", "color": "BLUE", "dmrt3": "C/C", "age": "800 BC", "wild_domestic": "D"}, {"lat": 52.0, "lon": 93.8, "year": -800, "label": "800 BC", "site": "Arzan1", "country": "Siberia", "sample": "Arz1-3", "period": "Iron Age", "color": "BLUE", "dmrt3": "C/C", "age": "800 BC", "wild_domestic": "D"}, {"lat": 52.0, "lon": 93.8, "year": -619, "label": "619 BC", "site": "Arzan2", "country": "Siberia", "sample": "Arz2-01", "period": "Iron Age", "color": "BLUE", "dmrt3": "C/C", "age": "619-608 BC", "wild_domestic": "D"}, {"lat": 52.0, "lon": 93.8, "year": -619, "label": "619 BC", "site": "Arzan2", "country": "Siberia", "sample": "Arz2-02", "period": "Iron Age", "color": "BLUE", "dmrt3": "C/C", "age": "619-608 BC", "wild_domestic": "D"}, {"lat": 52.0, "lon": 93.8, "year": -619, "label": "619 BC", "site": "Arzan2", "country": "Siberia", "sample": "Arz2-06", "period": "Iron Age", "color": "BLUE", "dmrt3": "C/C", "age": "619-608 BC", "wild_domestic": "D"}, {"lat": 52.0, "lon": 93.8, "year": -619, "label": "619 BC", "site": "Arzan2", "country": "Siberia", "sample": "Arz2-07", "period": "Iron Age", "color": "BLUE", "dmrt3": "C/C", "age": "619-608 BC", "wild_domestic": "D"}, {"lat": 52.0, "lon": 93.8, "year": -619, "label": "619 BC", "site": "Arzan2", "country": "Siberia", "sample": "Arz2-08", "period": "Iron Age", "color": "BLUE", "dmrt3": "C/C", "age": "619-608 BC", "wild_domestic": "D"}, {"lat": 52.0, "lon": 93.8, "year": -619, "label": "619 BC", "site": "Arzan2", "country": "Siberia", "sample": "Arz2-09", "period": "Iron Age", "color": "BLUE", "dmrt3": "C/C", "age": "619-608 BC", "wild_domestic": "D"}, {"lat": 52.0, "lon": 93.8, "year": -619, "label": "619 BC", "site": "Arzan2", "country": "Siberia", "sample": "Arz2-12", "period": "Iron Age", "color": "BLUE", "dmrt3": "C/C", "age": "619-608 BC", "wild_domestic": "D"}, {"lat": 52.0, "lon": 93.8, "year": -619, "label": "619 BC", "site": "Arzan2", "country": "Siberia", "sample": "Arz2-13", "period": "Iron Age", "color": "BLUE", "dmrt3": "C/C", "age": "619-608 BC", "wild_domestic": "D"}, {"lat": 52.0, "lon": 93.8, "year": -619, "label": "619 BC", "site": "Arzan2", "country": "Siberia", "sample": "Arz2-14", "period": "Iron Age", "color": "BLUE", "dmrt3": "C/C", "age": "619-608 BC", "wild_domestic": "D"}, {"lat": 50.5, "lon": 4.47, "year": -900, "label": "900 BC", "site": "Object'ifs sud", "country": "Belgium", "sample": "Ois1", "period": "Iron Age", "color": "BLUE", "dmrt3": "C/C", "age": "900 BC \u2013 300 AD", "wild_domestic": "D"}, {"lat": 55.68, "lon": 12.57, "year": 1, "label": "1 AD", "site": "Hornborg", "country": "Denmark", "sample": "P098", "period": "Iron_Age", "color": "BLUE", "dmrt3": "C/C", "age": "1-400 AD", "wild_domestic": "D"}, {"lat": 55.57, "lon": 12.3, "year": -2490, "label": "2490 BC", "site": "K\u00f8ge Bugt udfor", "country": "Denmark", "sample": "P108", "period": "Iron Age", "color": "BLUE", "dmrt3": "C/C", "age": "", "wild_domestic": "D"}, {"lat": 58.43, "lon": 22.59, "year": -700, "label": "700 BC", "site": "Asva (Saaremaa Island,", "country": "Estonia", "sample": "Asva1", "period": "Iron Age", "color": "BLUE", "dmrt3": "C/C", "age": "700-500 BC", "wild_domestic": "D"}, {"lat": 58.83, "lon": 23.37, "year": -800, "label": "800 BC", "site": "Ridala (Saaremaa", "country": "Estonia", "sample": "Rid1", "period": "Iron Age", "color": "BLUE", "dmrt3": "C/C", "age": "800-600 BC", "wild_domestic": "D"}, {"lat": 58.83, "lon": 23.37, "year": -800, "label": "800 BC", "site": "Ridala (Saaremaa", "country": "Estonia", "sample": "Rid2", "period": "Iron Age", "color": "BLUE", "dmrt3": "C/C", "age": "800-600 BC", "wild_domestic": "D"}, {"lat": 56.45, "lon": 9.4, "year": 1000, "label": "1000 AD", "site": "Viborg S\u00f8nders\u00f8", "country": "Denmark", "sample": "P82", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "1000-1300 AD", "wild_domestic": "D"}, {"lat": 53.96, "lon": -1.08, "year": 850, "label": "850 AD", "site": "York, Coppergate", "country": "England", "sample": "Yat07", "period": "Medieval", "color": "RED", "dmrt3": "A/A", "age": "850-900 AD", "wild_domestic": "D"}, {"lat": 53.96, "lon": -1.08, "year": 850, "label": "850 AD", "site": "York, Coppergate", "country": "England", "sample": "Yat12", "period": "Medieval", "color": "RED", "dmrt3": "A/A", "age": "850-900 AD", "wild_domestic": "D"}, {"lat": 57.86, "lon": 26.5, "year": 600, "label": "600 AD", "site": "Otep\u00e4\u00e4", "country": "Estonia", "sample": "Ote1", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "600-1300 AD", "wild_domestic": "D"}, {"lat": 57.86, "lon": 26.5, "year": 600, "label": "600 AD", "site": "Otep\u00e4\u00e4", "country": "Estonia", "sample": "Ote2", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "600-1300 AD", "wild_domestic": "D"}, {"lat": 58.52, "lon": 22.98, "year": 900, "label": "900 AD", "site": "P\u00f6ide hillfort", "country": "Estonia", "sample": "Poi1", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "900-1300 AD", "wild_domestic": "D"}, {"lat": 58.6, "lon": 26.9, "year": 600, "label": "600 AD", "site": "Saadj\u00e4rve", "country": "Estonia", "sample": "Saa1", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "600-1100 AD", "wild_domestic": "D"}, {"lat": 58.6, "lon": 24.5, "year": 900, "label": "900 AD", "site": "Soontagana", "country": "Estonia", "sample": "Soo1", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "900-1300 AD", "wild_domestic": "D"}, {"lat": 58.6, "lon": 24.5, "year": 900, "label": "900 AD", "site": "Soontagana", "country": "Estonia", "sample": "Soo2", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "900-1300 AD", "wild_domestic": "D"}, {"lat": 51.93, "lon": 10.85, "year": 400, "label": "400 AD", "site": "Deersheim", "country": "Germany", "sample": "Dee47", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "400-600 AD", "wild_domestic": "D"}, {"lat": 51.79, "lon": 11.15, "year": 400, "label": "400 AD", "site": "Quedlinburg", "country": "Germany", "sample": "Que40", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "400-600 AD", "wild_domestic": "D"}, {"lat": 51.4, "lon": 12.0, "year": 400, "label": "400 AD", "site": "Zorbau", "country": "Germany", "sample": "Zor3", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "400-600 AD", "wild_domestic": "D"}, {"lat": 53.3, "lon": 11.5, "year": 400, "label": "400 AD", "site": "Zwebendorf", "country": "Germany", "sample": "Zwe2", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "400-600 AD", "wild_domestic": "D"}, {"lat": 65.0, "lon": -18.5, "year": 850, "label": "850 AD", "site": "Hrossbrein fr\u00e1 Gar\u00f0s\u00e1", "country": "Iceland", "sample": "FoEq02", "period": "Medieval", "color": "RED", "dmrt3": "A/A", "age": "850-1050 AD", "wild_domestic": "D"}, {"lat": 65.97, "lon": -18.52, "year": 850, "label": "850 AD", "site": "Dalv\u00edk (Brimnes)", "country": "Iceland", "sample": "FoEq09", "period": "Medieval", "color": "RED", "dmrt3": "A/A", "age": "850-1050 AD", "wild_domestic": "D"}, {"lat": 65.6, "lon": -20.8, "year": 850, "label": "850 AD", "site": "6948 N\u00fapar hj\u00e1", "country": "Iceland", "sample": "FoEq25", "period": "Medieval", "color": "RED", "dmrt3": "A/A", "age": "850-1050 AD", "wild_domestic": "D"}, {"lat": 63.8, "lon": -18.0, "year": 850, "label": "850 AD", "site": "Ytra-Gar\u00f0shorn, 7th", "country": "Iceland", "sample": "FoEq42", "period": "Medieval", "color": "RED", "dmrt3": "A/A", "age": "850-1050 AD", "wild_domestic": "D"}, {"lat": 63.8, "lon": -18.0, "year": 850, "label": "850 AD", "site": "Ytra-Gar\u00f0shorn, 9th", "country": "Iceland", "sample": "FoEq44", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "850-1050 AD", "wild_domestic": "D"}, {"lat": 63.8, "lon": -18.0, "year": 850, "label": "850 AD", "site": "Ytra-Gar\u00f0shorn, 10th", "country": "Iceland", "sample": "FoEq47", "period": "Medieval", "color": "RED", "dmrt3": "A/A", "age": "850-1050 AD", "wild_domestic": "D"}, {"lat": 63.8, "lon": -18.0, "year": 850, "label": "850 AD", "site": "Ytra-Gar\u00f0shorn, 10th", "country": "Iceland", "sample": "FoEq48", "period": "Medieval", "color": "RED", "dmrt3": "A/A", "age": "850-1050 AD", "wild_domestic": "D"}, {"lat": 65.2, "lon": -20.1, "year": 850, "label": "850 AD", "site": "Brandssta\u00f0ir \u00ed", "country": "Iceland", "sample": "FoEq52", "period": "Medieval", "color": "RED", "dmrt3": "A/A", "age": "850-1050 AD", "wild_domestic": "D"}, {"lat": 64.1, "lon": -21.0, "year": 850, "label": "850 AD", "site": "11338A Hemla", "country": "Iceland", "sample": "FoEq60", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "850-1050 AD", "wild_domestic": "D"}, {"lat": 64.1, "lon": -21.0, "year": 850, "label": "850 AD", "site": "11338B Hemla", "country": "Iceland", "sample": "FoEq65", "period": "Medieval", "color": "PURPLE", "dmrt3": "C/A", "age": "850-1050 AD", "wild_domestic": "D"}, {"lat": 63.9, "lon": -19.9, "year": 850, "label": "850 AD", "site": "M\u00f6rk #15", "country": "Iceland", "sample": "FoEq66", "period": "Medieval", "color": "PURPLE", "dmrt3": "C/A", "age": "850-1050 AD", "wild_domestic": "D"}, {"lat": 63.95, "lon": -22.3, "year": 850, "label": "850 AD", "site": "Ytri-Nesl\u00f6nd 1960-46", "country": "Iceland", "sample": "FoEq68", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "850-1050 AD", "wild_domestic": "D"}, {"lat": 63.87, "lon": -21.05, "year": 850, "label": "850 AD", "site": "Eyrarteigur 1995-358", "country": "Iceland", "sample": "FoEq71", "period": "Medieval", "color": "PURPLE", "dmrt3": "C/A", "age": "850-1050 AD", "wild_domestic": "D"}, {"lat": 64.4, "lon": -21.5, "year": 850, "label": "850 AD", "site": "Mi\u00f0sandfell 1982-57.", "country": "Iceland", "sample": "FoEq76", "period": "Medieval", "color": "PURPLE", "dmrt3": "C/A", "age": "850-1050 AD", "wild_domestic": "D"}, {"lat": 64.4, "lon": -21.5, "year": 850, "label": "850 AD", "site": "Mi\u00f0sandfell 1982-57.", "country": "Iceland", "sample": "FoEq77", "period": "Medieval", "color": "PURPLE", "dmrt3": "C/A", "age": "850-1050 AD", "wild_domestic": "D"}, {"lat": 48.41, "lon": 20.62, "year": 700, "label": "700 AD", "site": "Sebastovce", "country": "Slovakia", "sample": "Seb037", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "700-800 AD", "wild_domestic": "D"}, {"lat": 48.41, "lon": 20.62, "year": 700, "label": "700 AD", "site": "Sebastovce", "country": "Slovakia", "sample": "Seb048", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "700-800 AD", "wild_domestic": "D"}, {"lat": 48.41, "lon": 20.62, "year": 700, "label": "700 AD", "site": "Sebastovce", "country": "Slovakia", "sample": "Seb052", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "700-800 AD", "wild_domestic": "D"}, {"lat": 48.41, "lon": 20.62, "year": 700, "label": "700 AD", "site": "Sebastovce", "country": "Slovakia", "sample": "Seb058", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "700-800 AD", "wild_domestic": "D"}, {"lat": 48.41, "lon": 20.62, "year": 700, "label": "700 AD", "site": "Sebastovce", "country": "Slovakia", "sample": "Seb080", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "700-800 AD", "wild_domestic": "D"}, {"lat": 48.41, "lon": 20.62, "year": 700, "label": "700 AD", "site": "Sebastovce", "country": "Slovakia", "sample": "Seb093", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "700-800 AD", "wild_domestic": "D"}, {"lat": 48.41, "lon": 20.62, "year": 700, "label": "700 AD", "site": "Sebastovce", "country": "Slovakia", "sample": "Seb094", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "700-800 AD", "wild_domestic": "D"}, {"lat": 48.41, "lon": 20.62, "year": 700, "label": "700 AD", "site": "Sebastovce", "country": "Slovakia", "sample": "Seb099", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "700-800 AD", "wild_domestic": "D"}, {"lat": 48.41, "lon": 20.62, "year": 700, "label": "700 AD", "site": "Sebastovce", "country": "Slovakia", "sample": "Seb131", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "700-800 AD", "wild_domestic": "D"}, {"lat": 48.41, "lon": 20.62, "year": 700, "label": "700 AD", "site": "Sebastovce", "country": "Slovakia", "sample": "Seb161", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "700-800 AD", "wild_domestic": "D"}, {"lat": 48.41, "lon": 20.62, "year": 700, "label": "700 AD", "site": "Sebastovce", "country": "Slovakia", "sample": "Seb230", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "700-800 AD", "wild_domestic": "D"}, {"lat": 48.41, "lon": 20.62, "year": 700, "label": "700 AD", "site": "Sebastovce", "country": "Slovakia", "sample": "Seb233", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "700-800 AD", "wild_domestic": "D"}, {"lat": 48.41, "lon": 20.62, "year": 700, "label": "700 AD", "site": "Sebastovce", "country": "Slovakia", "sample": "Seb238", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "700-800 AD", "wild_domestic": "D"}, {"lat": 59.86, "lon": 17.63, "year": 600, "label": "600 AD", "site": "Uppsala", "country": "Sweden", "sample": "Upps01", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "600-800 AD", "wild_domestic": "D"}, {"lat": 59.86, "lon": 17.63, "year": 600, "label": "600 AD", "site": "Uppsala", "country": "Sweden", "sample": "Upps02", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "600-800 AD", "wild_domestic": "D"}, {"lat": 59.86, "lon": 17.63, "year": 600, "label": "600 AD", "site": "Uppsala", "country": "Sweden", "sample": "Upps03", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "600-800 AD", "wild_domestic": "D"}, {"lat": 59.86, "lon": 17.63, "year": 680, "label": "680 AD", "site": "Uppsala", "country": "Sweden", "sample": "Upps04", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "680-890 AD", "wild_domestic": "D"}, {"lat": 59.86, "lon": 17.63, "year": 1000, "label": "1000 AD", "site": "Uppsala", "country": "Sweden", "sample": "Upps05", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "1000-1150 AD", "wild_domestic": "D"}, {"lat": 59.86, "lon": 17.63, "year": 870, "label": "870 AD", "site": "Uppsala", "country": "Sweden", "sample": "Upps07", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "870-1160 AD", "wild_domestic": "D"}, {"lat": 59.86, "lon": 17.63, "year": 800, "label": "800 AD", "site": "Uppsala", "country": "Sweden", "sample": "Upps10", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "800-1050 AD", "wild_domestic": "D"}, {"lat": 40.42, "lon": -3.7, "year": 500, "label": "500 AD", "site": "Buzanca 2 (Madrid)", "country": "Spain", "sample": "Buz1", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "500-600 AD", "wild_domestic": "D"}, {"lat": 41.7, "lon": -4.72, "year": 660, "label": "660 AD", "site": "Mucientes-Valladolid", "country": "Spain", "sample": "Sp-29", "period": "Medieval", "color": "BLUE", "dmrt3": "C/C", "age": "", "wild_domestic": "D"}];
+
+const map = L.map('map', { center: [48, 20], zoom: 4 });
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution: '© OpenStreetMap © CARTO',
+  subdomains: 'abcd',
+  maxZoom: 19
+}).addTo(map);
+
+function markerColor(d) {
+  if (d.color === 'RED')    return '#c0392b';
+  if (d.color === 'PURPLE') return '#7d3c98';
+  return '#2471a3';
+}
+
+function periodLabel(y) {
+  if (y <= -1200) return 'Pre-Iron Age · Bronze & Neolithic';
+  if (y <= -800)  return 'Late Bronze Age · Iron Age transition';
+  if (y <= -27)   return 'Iron Age';
+  if (y <= 476)   return 'Classical Antiquity · Roman Era';
+  if (y <= 1000)  return 'Early Medieval';
+  return 'High Medieval';
+}
+
+function yearLabel(y) {
+  if (y < 0) return Math.abs(y) + ' BC';
+  if (y === 0) return '1 AD';
+  return y + ' AD';
+}
+
+let markers = [];
+let mode = 'cumulative';
+let playing = false;
+let playInterval = null;
+
+const tooltip = document.getElementById('map-tooltip');
+
+document.addEventListener('mousemove', (e) => {
+  tooltip.style.left = (e.clientX + 14) + 'px';
+  tooltip.style.top  = (e.clientY - 10) + 'px';
+});
+
+function makeMarker(d) {
+  const color = markerColor(d);
+  const wdLabel = d.wild_domestic === 'W' ? 'Wild' : d.wild_domestic === 'D' ? 'Domestic' : (d.wild_domestic || '—');
+  const icon = L.divIcon({
+    className: '',
+    html: `<div style="
+      width:11px;height:11px;
+      border-radius:50%;
+      background:${color};
+      border:2px solid rgba(255,255,255,0.85);
+      box-shadow:0 1px 4px rgba(0,0,0,0.3);
+      cursor:pointer;
+    "></div>`,
+    iconSize: [11,11], iconAnchor: [5.5,5.5],
+  });
+
+  const m = L.marker([d.lat, d.lon], {icon});
+
+  m.on('mouseout', () => {
+    tooltip.style.display = 'none';
+  });
+
+  m.bindPopup(`
+      <b>Excavation site:</b> ${d.site}<br>
+      <b>Sample:</b> ${d.sample}<br>
+      <b>DMRT3:</b> ${d.dmrt3} <br>
+      <b>Age range:</b> ${d.age || '—'}
+    </div>
+  `, {maxWidth: 230});
+  return m;
+}
+
+function updateMap(sliderYear) {
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+
+  const visible = mode === 'cumulative'
+    ? DATA.filter(d => d.year <= sliderYear)
+    : DATA.filter(d => Math.abs(d.year - sliderYear) <= 500);
+
+  visible.forEach(d => {
+    const m = makeMarker(d);
+    m.addTo(map);
+    markers.push(m);
+  });
+
+  document.getElementById('year-display').textContent = yearLabel(sliderYear);
+  document.getElementById('period-display').textContent = periodLabel(sliderYear);
+  document.getElementById('count-display').textContent =
+    visible.length + ' sample' + (visible.length !== 1 ? 's' : '') + ' visible';
+}
+
+const slider = document.getElementById('tl-slider');
+slider.addEventListener('input', () => updateMap(parseInt(slider.value)));
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-cumulative').classList.toggle('active', m === 'cumulative');
+  document.getElementById('btn-window').classList.toggle('active', m === 'window');
+  updateMap(parseInt(slider.value));
+}
+
+function togglePlay() {
+  if (playing) {
+    clearInterval(playInterval);
+    playing = false;
+    document.getElementById('btn-play').textContent = '▶ Play';
+  } else {
+    playing = true;
+    document.getElementById('btn-play').textContent = '⏸ Pause';
+    playInterval = setInterval(() => {
+      let val = parseInt(slider.value) + 50;
+      if (val > 1000) val = -5354;
+      slider.value = val;
+      updateMap(val);
+    }, 120);
+  }
+}
+
+function resetSlider() {
+  if (playing) togglePlay();
+  slider.value = 1000;
+  updateMap(1000);
+}
+
+updateMap(1000);
+</script>
+</body>
+</html>
