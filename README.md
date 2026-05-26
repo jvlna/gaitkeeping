@@ -3,6 +3,8 @@ Gaited Horse Data Visualization Project
 
 # Historical Horse Genetic Map
 
+[Map Link](https://jvlna.github.io/gaitkeeping/)
+
 Map created using Leaflet with data sourced from Wutke, Saskia, et al. “The Origin of Ambling Horses.” Current Biology, vol. 26, no. 15, 8 Aug. 2016, [https://doi.org/10.1016/j.cub.2016.07.001](https://doi.org/10.1016/j.cub.2016.07.001). 
 
 Researchers sequenced the DMRT3 gene in 90 archaeological horse remain samples. A single substitution in this gene is linked to the ability to perform additional gaits beyond the standard walk, trot, canter, and gallop. One of the most notable examples is the tolt, performed by the Icelandic horse. This study has found that the DMRT3 variant was present in horses in England and Iceland around the same time, approximately 850-1050 AD. 
